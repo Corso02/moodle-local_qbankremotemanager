@@ -23,6 +23,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['pluginname'] = 'QBank Remote Manager';
+
 $string['allowofflineattempts_desc'] = 'Whether to allow offline attempts in the Mobile app (1/0).';
 $string['amihererestext_desc'] = 'This will always contain "Yes I am", and it represents that this plugin is available.';
 $string['attemptclosed_desc'] = 'Review option: Show attempt after quiz is closed. If set to -1, system default is used.';
@@ -90,7 +92,6 @@ $string['overallfeedbackimmediately_desc'] = 'Review option: Show overallfeedbac
 $string['overallfeedbackopen_desc'] = 'Review option: Show overallfeedback while quiz is open. If set to -1, system default is used.';
 $string['overduehandling_desc'] = 'The method used to handle overdue attempts (e.g., autosubmit).';
 $string['override_grade_desc'] = 'An optional grade value that overrides the calculated grade for this activity.';
-$string['pluginname'] = 'QBank Remote Manager';
 $string['preferredbehaviour_desc'] = 'The question behavior (e.g., "deferredfeedback").';
 $string['questiondecimalpoints_desc'] = 'Decimal places in grades for individual questions.';
 $string['questionsperpage_desc'] = 'Number of questions per page (0 for all on one page).';
