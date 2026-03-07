@@ -15,6 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace local_qbankremotemanager\external;
+
 defined('MOODLE_INTERNAL') || die();
 
 use external_api;
@@ -33,7 +34,7 @@ use core_question\local\bank\helper as qbank_helper;
 use qbank_managecategories\helper as manage_categories_helper;
 use mod_quiz\quiz_settings;
 use mod_quiz\access_manager;
-use \question_engine;
+use question_engine;
 use core_courseformat\base as course_format;
 
 require_once("$CFG->libdir/externallib.php");
@@ -57,12 +58,13 @@ require_once("$CFG->libdir/gradelib.php");
 
 /**
  * Encapsulates plugin logic
- * 
+ *
  * @package local_qbankremotemanager
  * @copyright 2026 Peter Vanát <vanat.peter@gmail.com>
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qbankremotemanager_external extends external_api {
+class qbankremotemanager_external extends external_api
+{
     /**
      * No parameters are required
      */
@@ -78,7 +80,7 @@ class qbankremotemanager_external extends external_api {
     }
 
     /**
-     * Returns text defined in lang. 
+     * Returns text defined in lang.
      */
     public static function am_i_here_returns() {
         return new external_single_structure([
@@ -89,69 +91,338 @@ class qbankremotemanager_external extends external_api {
     /**
      * Parameters for uploading the quiz.
      * In config only quizname, courseid and section must be defined.
-     * Itemid represents id of the file with the questions. 
+     * Itemid represents id of the file with the questions.
      */
     public static function upload_quiz_parameters() {
         return new external_function_parameters([
             'config' => new external_single_structure([
-                'quizname'                    => new external_value(PARAM_TEXT, get_string('quizname_desc', 'local_qbankremotemanager')),
-                'courseid'                    => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
-                'section'                     => new external_value(PARAM_INT, get_string('section_desc', 'local_qbankremotemanager')),
-                'gradepass'                   => new external_value(PARAM_INT, get_string('gradepass_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'showuserpicture'             => new external_value(PARAM_TEXT, get_string('showuserpicture_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'attemptonlast'               => new external_value(PARAM_INT, get_string('attemptonlast_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'canredoquestions'            => new external_value(PARAM_INT, get_string('canredoquestions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'preferredbehaviour'          => new external_value(PARAM_TEXT, get_string('preferredbehaviour_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'shuffleanswers'              => new external_value(PARAM_INT, get_string('shuffleanswers_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'navmethod'                   => new external_value(PARAM_TEXT, get_string('navmethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'questionsperpage'            => new external_value(PARAM_INT, get_string('questionsperpage_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'grademethod'                 => new external_value(PARAM_TEXT, get_string('grademethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'attempts'                    => new external_value(PARAM_INT, get_string('attempts_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'gradecat'                    => new external_value(PARAM_TEXT, get_string('gradecat_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'graceperiod'                 => new external_value(PARAM_INT, get_string('graceperiod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'overduehandling'             => new external_value(PARAM_TEXT, get_string('overduehandling_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'timelimit'                   => new external_value(PARAM_INT, get_string('timelimit_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'visible'                     => new external_value(PARAM_INT, get_string('visible_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 1),
-                'browsersecurity'             => new external_value(PARAM_TEXT, get_string('browsersecurity_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, '-'),
-                'quizpassword'                => new external_value(PARAM_TEXT, get_string('quizpassword_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, ''),
-                'questiondecimalpoints'       => new external_value(PARAM_INT, get_string('questiondecimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'decimalpoints'               => new external_value(PARAM_INT, get_string('decimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-                'timeopen'                    => new external_value(PARAM_INT, get_string('timeopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'timeclose'                   => new external_value(PARAM_INT, get_string('timeclose_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'intro'                       => new external_value(PARAM_RAW, get_string('intro_desc', 'local_qbankremotemanager', VALUE_DEFAULT, '')),
-                'showdescription'             => new external_value(PARAM_INT, get_string('showdescription_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'attemptduring'               => new external_value(PARAM_INT, get_string('attemptduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'correctnessduring'           => new external_value(PARAM_INT, get_string('correctnessduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'maxmarksduring'              => new external_value(PARAM_INT, get_string('maxmarksduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'marksduring'                 => new external_value(PARAM_INT, get_string('marksduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'specificfeedbackduring'      => new external_value(PARAM_INT, get_string('specificfeedbackduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'generalfeedbackduring'       => new external_value(PARAM_INT, get_string('generalfeedbackduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'rightanswerduring'           => new external_value(PARAM_INT, get_string('rightanswerduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'overallfeedbackduring'       => new external_value(PARAM_INT, get_string('overallfeedbackduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'attemptimmediately'          => new external_value(PARAM_INT, get_string('attemptimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'correctnessimmediately'      => new external_value(PARAM_INT, get_string('correctnessimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'maxmarksimmediately'         => new external_value(PARAM_INT, get_string('maxmarksimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'marksimmediately'            => new external_value(PARAM_INT, get_string('marksimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'specificfeedbackimmediately' => new external_value(PARAM_INT, get_string('specificfeedbackimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'generalfeedbackimmediately'  => new external_value(PARAM_INT, get_string('generalfeedbackimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'rightanswerimmediately'      => new external_value(PARAM_INT, get_string('rightanswerimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'overallfeedbackimmediately'  => new external_value(PARAM_INT, get_string('overallfeedbackimmediately_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'attemptopen'                 => new external_value(PARAM_INT, get_string('attemptopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'correctnessopen'             => new external_value(PARAM_INT, get_string('correctnessopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'maxmarksopen'                => new external_value(PARAM_INT, get_string('maxmarksopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'marksopen'                   => new external_value(PARAM_INT, get_string('marksopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'specificfeedbackopen'        => new external_value(PARAM_INT, get_string('specificfeedbackopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'generalfeedbackopen'         => new external_value(PARAM_INT, get_string('generalfeedbackopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'rightansweropen'             => new external_value(PARAM_INT, get_string('rightansweropen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'overallfeedbackopen'         => new external_value(PARAM_INT, get_string('overallfeedbackopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'attemptclosed'               => new external_value(PARAM_INT, get_string('attemptclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'correctnessclosed'           => new external_value(PARAM_INT, get_string('correctnessclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'maxmarksclosed'              => new external_value(PARAM_INT, get_string('maxmarksclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'marksclosed'                 => new external_value(PARAM_INT, get_string('marksclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'specificfeedbackclosed'      => new external_value(PARAM_INT, get_string('specificfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'generalfeedbackclosed'       => new external_value(PARAM_INT, get_string('generalfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'rightanswerclosed'           => new external_value(PARAM_INT, get_string('rightanswerclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'overallfeedbackclosed'       => new external_value(PARAM_INT, get_string('overallfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
+                'quizname' => new external_value(
+                    PARAM_TEXT,
+                    get_string('quizname_desc', 'local_qbankremotemanager')
+                ),
+                'courseid' => new external_value(
+                    PARAM_INT,
+                    get_string('courseid_desc', 'local_qbankremotemanager')
+                ),
+                'section' => new external_value(
+                    PARAM_INT,
+                    get_string('section_desc', 'local_qbankremotemanager')
+                ),
+                'gradepass' => new external_value(
+                    PARAM_INT,
+                    get_string('gradepass_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'showuserpicture' => new external_value(
+                    PARAM_TEXT,
+                    get_string('showuserpicture_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'attemptonlast' => new external_value(
+                    PARAM_INT,
+                    get_string('attemptonlast_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'canredoquestions' => new external_value(
+                    PARAM_INT,
+                    get_string('canredoquestions_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'preferredbehaviour' => new external_value(
+                    PARAM_TEXT,
+                    get_string('preferredbehaviour_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'shuffleanswers' => new external_value(
+                    PARAM_INT,
+                    get_string('shuffleanswers_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'navmethod' => new external_value(
+                    PARAM_TEXT,
+                    get_string('navmethod_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'questionsperpage' => new external_value(
+                    PARAM_INT,
+                    get_string('questionsperpage_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'grademethod' => new external_value(
+                    PARAM_TEXT,
+                    get_string('grademethod_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'attempts' => new external_value(
+                    PARAM_INT,
+                    get_string('attempts_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'gradecat' => new external_value(
+                    PARAM_TEXT,
+                    get_string('gradecat_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'graceperiod' => new external_value(
+                    PARAM_INT,
+                    get_string('graceperiod_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'overduehandling' => new external_value(
+                    PARAM_TEXT,
+                    get_string('overduehandling_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'timelimit' => new external_value(
+                    PARAM_INT,
+                    get_string('timelimit_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'visible' => new external_value(
+                    PARAM_INT,
+                    get_string('visible_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    1
+                ),
+                'browsersecurity' => new external_value(
+                    PARAM_TEXT,
+                    get_string('browsersecurity_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    '-'
+                ),
+                'quizpassword' => new external_value(
+                    PARAM_TEXT,
+                    get_string('quizpassword_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    ''
+                ),
+                'questiondecimalpoints' => new external_value(
+                    PARAM_INT,
+                    get_string('questiondecimalpoints_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'decimalpoints' => new external_value(
+                    PARAM_INT,
+                    get_string('decimalpoints_desc', 'local_qbankremotemanager'),
+                    VALUE_OPTIONAL
+                ),
+                'timeopen' => new external_value(
+                    PARAM_INT,
+                    get_string('timeopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'timeclose' => new external_value(
+                    PARAM_INT,
+                    get_string('timeclose_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'intro' => new external_value(
+                    PARAM_RAW,
+                    get_string('intro_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    ''
+                ),
+                'showdescription' => new external_value(
+                    PARAM_INT,
+                    get_string('showdescription_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'attemptduring' => new external_value(
+                    PARAM_INT,
+                    get_string('attemptduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'correctnessduring' => new external_value(
+                    PARAM_INT,
+                    get_string('correctnessduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'maxmarksduring' => new external_value(
+                    PARAM_INT,
+                    get_string('maxmarksduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'marksduring' => new external_value(
+                    PARAM_INT,
+                    get_string('marksduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'specificfeedbackduring' => new external_value(
+                    PARAM_INT,
+                    get_string('specificfeedbackduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'generalfeedbackduring' => new external_value(
+                    PARAM_INT,
+                    get_string('generalfeedbackduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'rightanswerduring' => new external_value(
+                    PARAM_INT,
+                    get_string('rightanswerduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'overallfeedbackduring' => new external_value(
+                    PARAM_INT,
+                    get_string('overallfeedbackduring_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'attemptimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('attemptimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'correctnessimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('correctnessimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'maxmarksimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('maxmarksimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'marksimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('marksimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'specificfeedbackimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('specificfeedbackimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'generalfeedbackimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('generalfeedbackimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'rightanswerimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('rightanswerimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'overallfeedbackimmediately' => new external_value(
+                    PARAM_INT,
+                    get_string('overallfeedbackimmediately_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'attemptopen' => new external_value(
+                    PARAM_INT,
+                    get_string('attemptopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'correctnessopen' => new external_value(
+                    PARAM_INT,
+                    get_string('correctnessopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'maxmarksopen' => new external_value(
+                    PARAM_INT,
+                    get_string('maxmarksopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'marksopen' => new external_value(
+                    PARAM_INT,
+                    get_string('marksopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'specificfeedbackopen' => new external_value(
+                    PARAM_INT,
+                    get_string('specificfeedbackopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'generalfeedbackopen' => new external_value(
+                    PARAM_INT,
+                    get_string('generalfeedbackopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'rightansweropen' => new external_value(
+                    PARAM_INT,
+                    get_string('rightansweropen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'overallfeedbackopen' => new external_value(
+                    PARAM_INT,
+                    get_string('overallfeedbackopen_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'attemptclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('attemptclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'correctnessclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('correctnessclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'maxmarksclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('maxmarksclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'marksclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('marksclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'specificfeedbackclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('specificfeedbackclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'generalfeedbackclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('generalfeedbackclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'rightanswerclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('rightanswerclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'overallfeedbackclosed' => new external_value(
+                    PARAM_INT,
+                    get_string('overallfeedbackclosed_desc', 'local_qbankremotemanager'),
+                    VALUE_DEFAULT,
+                    0
+                ),
             ], get_string('config_desc', 'local_qbankremotemanager')),
             "itemid" => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager')),
         ]);
@@ -159,7 +430,8 @@ class qbankremotemanager_external extends external_api {
 
     /**
      * Definition of function to upload new quiz to selected course.
-     * File with questions for the quiz MUST be uploaded beforehand to draft area and retrieved item id must be passed to this function.
+     * File with questions for the quiz MUST be uploaded beforehand to draft area and
+     * retrieved item id must be passed to this function.
      * You can use webservice/upload.php "Endpoint" to upload the file
      * File MUST be in a Moodle XML format
      *
@@ -218,10 +490,25 @@ class qbankremotemanager_external extends external_api {
      */
     public static function upload_quiz_returns() {
         return new external_single_structure([
-            'quizid'           => new external_value(PARAM_INT, get_string('quizid_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-            'status'           => new external_value(PARAM_TEXT, get_string('status_desc', 'local_qbankremotemanager')),
-            'num_of_questions' => new external_value(PARAM_INT, get_string('num_of_questions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-            'error_message'    => new external_value(PARAM_TEXT, get_string('error_message_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+            'quizid' => new external_value(
+                PARAM_INT,
+                get_string('quizid_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
+            'status' => new external_value(
+                PARAM_TEXT,
+                get_string('status_desc', 'local_qbankremotemanager')
+            ),
+            'num_of_questions' => new external_value(
+                PARAM_INT,
+                get_string('num_of_questions_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
+            'error_message' => new external_value(
+                PARAM_TEXT,
+                get_string('error_message_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
         ]);
     }
 
@@ -239,7 +526,8 @@ class qbankremotemanager_external extends external_api {
      *
      * @param int $courseid ID of the course we want the question categories of
      *
-     * @return object where you can retrieve the courseContextId and the array of categories, where each category has an ID and the title
+     * @return object where you can retrieve the courseContextId and the array of categories,
+     * where each category has an ID and the title
      */
     public static function get_question_bank_categories($courseid) {
         global $DB;
@@ -347,9 +635,20 @@ class qbankremotemanager_external extends external_api {
      */
     public static function upload_questions_returns() {
         return new external_single_structure([
-            'status'           => new external_value(PARAM_TEXT, get_string('status_desc', 'local_qbankremotemanager')),
-            'num_of_questions' => new external_value(PARAM_INT, get_string('num_of_questions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
-            'error_message'    => new external_value(PARAM_TEXT, get_string('error_message_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+            'status' => new external_value(
+                PARAM_TEXT,
+                get_string('status_desc', 'local_qbankremotemanager')
+            ),
+            'num_of_questions' => new external_value(
+                PARAM_INT,
+                get_string('num_of_questions_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
+            'error_message' => new external_value(
+                PARAM_TEXT,
+                get_string('error_message_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
         ]);
     }
 
@@ -408,7 +707,7 @@ class qbankremotemanager_external extends external_api {
         $qformat->setContextfromfile(1);
         $qformat->setStoponerror(1);
 
-        // supress echo from importprocess function - its messing up API response.
+        // Supress echo from importprocess function - its messing up API response.
         ob_start();
         $success = $qformat->importprocess();
         ob_end_clean();
@@ -798,7 +1097,7 @@ class qbankremotemanager_external extends external_api {
      *
      * @param object $config whole config from user
      * @param string $key key for the value we want to validate
-     * @param int $default default value to use when given key is undefined in $config 
+     * @param int $default default value to use when given key is undefined in $config
      * @param constant $expectedtype use one of the PARAM_TEXT, PARAM_INT etc. Used in clean_param function.
      * @param array $validvalues array of expected values. Optional, if none passed only clean_param function validates the value.
      *
@@ -841,7 +1140,7 @@ class qbankremotemanager_external extends external_api {
      * @param object $course course we are working in
      */
     private static function add_questions_to_quiz($cmid, $questionids, $course) {
-        list($quiz, $cm) = get_module_from_cmid($cmid);
+        [$quiz, $cm] = get_module_from_cmid($cmid);
 
         $quizsettingsexists = class_exists("mod_quiz\quiz_settings");
 
@@ -852,8 +1151,10 @@ class qbankremotemanager_external extends external_api {
             self::add_questions($questionids, $quiz);
 
             $gradecalculator->recompute_quiz_sumgrades();
-        } else { 
-            // In older versions (< 4.2) class quiz settings doesn't exists, so we use older way of adding questions and updatings grades.
+        } else {
+            /* In older versions (< 4.2) class quiz settings doesn't exists,
+             * so we use older way of adding questions and updatings grades.
+             */
             self::add_questions($questionids, $quiz);
             quiz_delete_previews($quiz);
             quiz_update_sumgrades($quiz);
