@@ -1,11 +1,20 @@
 <?php
-/**
- * Services definition for QBank Remote Manager plugin
- *
- * @package    local_qbankremotemanager
- * @copyright  2026 Peter Vanát <vanat.peter@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Author of this plugin: Peter Vanát <vanat.peter@gmail.com>
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -14,7 +23,7 @@ $functions = [
         'classname'    => 'local_qbankremotemanager\external\qbankremotemanager_external',
         'methodname'   => 'am_i_here',
         'description'  => 'Tests if this plugin is available in LMS Moodle instance.',
-        'type'         => 'read',        
+        'type'         => 'read',
         'ajax'         => true,
     ],
     'local_qbankremotemanager_upload_quiz' => [
@@ -22,7 +31,7 @@ $functions = [
         'methodname'   => 'upload_quiz',
         'description'  => 'Uploads new quiz to course with questions from file in Moodle XML format. This file must be uploaded beforehand.',
         'type'         => 'write',
-        'capabilities' => 'moodle/question:add, moodle/question:editall, moodle/question:managecategory, moodle/question:moveall, moodle/question:useall, mod/quiz:addinstance, mod/quiz:manage',        
+        'capabilities' => 'moodle/question:add, moodle/question:editall, moodle/question:managecategory, moodle/question:moveall, moodle/question:useall, mod/quiz:addinstance, mod/quiz:manage',
         'ajax'         => true,
     ],
     'local_qbankremotemanager_get_question_categories' => [
@@ -30,7 +39,7 @@ $functions = [
         'methodname'   => 'get_question_bank_categories',
         'description'  => 'Retrieve categories available for export from question bank.',
         'type'         => 'read',
-        'capabilities' => 'moodle/question:editall, moodle/question:managecategory',        
+        'capabilities' => 'moodle/question:editall, moodle/question:managecategory',
         'ajax'         => true,
     ],
     'local_qbankremotemanager_upload_questions' => [
@@ -38,7 +47,7 @@ $functions = [
         'methodname'   => 'upload_questions',
         'description'  => 'Import new questions to questions bank from Moodle XML format. This file must be uploaded beforehand.',
         'type'         => 'write',
-        'capabilities' => 'moodle/question:add, moodle/question:editall, moodle/question:managecategory, moodle/question:moveall, moodle/question:useall',        
+        'capabilities' => 'moodle/question:add, moodle/question:editall, moodle/question:managecategory, moodle/question:moveall, moodle/question:useall',
         'ajax'         => true,
     ]
 ];
@@ -46,13 +55,13 @@ $functions = [
 $services = [
     'QBank Remote Manager API' => [
         'functions' => [
-            'local_qbankremotemanager_upload_quiz', 
-            'local_qbankremotemanager_am_i_here', 
-            'local_qbankremotemanager_get_question_categories', 
-            'local_qbankremotemanager_upload_questions'
+            'local_qbankremotemanager_upload_quiz',
+            'local_qbankremotemanager_am_i_here',
+            'local_qbankremotemanager_get_question_categories',
+            'local_qbankremotemanager_upload_questions',
         ],
         'restrictedusers' => 0,
         'enabled'         => 1,
-        'shortname'       => 'qbank_manager'
-    ]
+        'shortname'       => 'qbank_manager',
+    ],
 ];

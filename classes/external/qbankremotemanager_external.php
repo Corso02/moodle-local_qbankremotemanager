@@ -1,13 +1,22 @@
 <?php
-/**
- * Implementation of the REST API functions for QBank Remote Manager plugin.
- *
- * @package    local_qbankremotemanager
- * @copyright  2026 Peter Vanát <vanat.peter@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-*/
-namespace local_qbankremotemanager\external;
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+// Author of this plugin: Peter Vanát <vanat.peter@gmail.com>
+
+namespace local_qbankremotemanager\external;
 defined('MOODLE_INTERNAL') || die();
 
 use external_api;
@@ -31,24 +40,30 @@ use core_courseformat\base as course_format;
 
 require_once("$CFG->libdir/externallib.php");
 require_once("$CFG->libdir/questionlib.php");
-require_once("$CFG->dirroot/question/format/xml/format.php"); 
+require_once("$CFG->dirroot/question/format/xml/format.php");
 require_once("$CFG->dirroot/course/modlib.php");
 
-// needed for Moodle version 4.0 (function get_module_from_cmid is there)
+// Needed for Moodle version 4.0 (function get_module_from_cmid is there).
 require_once("$CFG->dirroot/question/editlib.php");
 
-//needed for defined constants like QUIZ_MAX_DECIMAL_OPTION
+// Needed for defined constants like QUIZ_MAX_DECIMAL_OPTION.
 require_once("$CFG->dirroot/mod/quiz/lib.php");
 
-//needed for functions: quiz_get_overdue_handling_options, quiz_get_user_image_options, quiz_questions_per_page_options, quiz_get_grading_options
+/* needed for functions: quiz_get_overdue_handling_options, quiz_get_user_image_options, 
+ * quiz_questions_per_page_options, quiz_get_grading_options
+ */
 require_once("$CFG->dirroot/mod/quiz/locallib.php");
 
-//needed for function: grade_get_categories_menu
+// Needed for function: grade_get_categories_menu.
 require_once("$CFG->libdir/gradelib.php");
 
-
+/**
+ * Encapsulates plugin logic
+ */
 class qbankremotemanager_external extends external_api {
-
+    /**
+     * No parameters are required
+     */
     public static function am_i_here_parameters() {
         return new external_function_parameters([]);
     }
@@ -60,41 +75,49 @@ class qbankremotemanager_external extends external_api {
         return ['res_text' => "Yes I am"];
     }
 
+    /**
+     * Returns text defined in lang. 
+     */
     public static function am_i_here_returns() {
         return new external_single_structure([
             'res_text' => new external_value(PARAM_TEXT, get_string('amihererestext_desc', 'local_qbankremotemanager')),
         ]);
     }
 
+    /**
+     * Parameters for uploading the quiz.
+     * In config only quizname, courseid and section must be defined.
+     * Itemid represents id of the file with the questions. 
+     */
     public static function upload_quiz_parameters() {
         return new external_function_parameters([
             'config' => new external_single_structure([
                 'quizname'                    => new external_value(PARAM_TEXT, get_string('quizname_desc', 'local_qbankremotemanager')),
                 'courseid'                    => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
-                'section'                     => new external_value(PARAM_INT, get_string('section_desc', 'local_qbankremotemanager')), 
-                'gradepass'                   => new external_value(PARAM_INT, get_string('gradepass_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'showuserpicture'             => new external_value(PARAM_TEXT, get_string('showuserpicture_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'attemptonlast'               => new external_value(PARAM_INT, get_string('attemptonlast_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'canredoquestions'            => new external_value(PARAM_INT, get_string('canredoquestions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'preferredbehaviour'          => new external_value(PARAM_TEXT, get_string('preferredbehaviour_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'shuffleanswers'              => new external_value(PARAM_INT, get_string('shuffleanswers_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'navmethod'                   => new external_value(PARAM_TEXT, get_string('navmethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'questionsperpage'            => new external_value(PARAM_INT, get_string('questionsperpage_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'grademethod'                 => new external_value(PARAM_TEXT, get_string('grademethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'attempts'                    => new external_value(PARAM_INT, get_string('attempts_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'gradecat'                    => new external_value(PARAM_TEXT, get_string('gradecat_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'graceperiod'                 => new external_value(PARAM_INT, get_string('graceperiod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'overduehandling'             => new external_value(PARAM_TEXT, get_string('overduehandling_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'timelimit'                   => new external_value(PARAM_INT, get_string('timelimit_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0), 
-                'visible'                     => new external_value(PARAM_INT, get_string('visible_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 1), 
-                'browsersecurity'             => new external_value(PARAM_TEXT, get_string('browsersecurity_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, '-'), 
-                'quizpassword'                => new external_value(PARAM_TEXT, get_string('quizpassword_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, ''), 
-                'questiondecimalpoints'       => new external_value(PARAM_INT, get_string('questiondecimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'decimalpoints'               => new external_value(PARAM_INT, get_string('decimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL), 
-                'timeopen'                    => new external_value(PARAM_INT, get_string('timeopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0), 
-                'timeclose'                   => new external_value(PARAM_INT, get_string('timeclose_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0), 
-                'intro'                       => new external_value(PARAM_RAW, get_string('intro_desc', 'local_qbankremotemanager', VALUE_DEFAULT, '')), 
-                'showdescription'             => new external_value(PARAM_INT, get_string('showdescription_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0), 
+                'section'                     => new external_value(PARAM_INT, get_string('section_desc', 'local_qbankremotemanager')),
+                'gradepass'                   => new external_value(PARAM_INT, get_string('gradepass_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'showuserpicture'             => new external_value(PARAM_TEXT, get_string('showuserpicture_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'attemptonlast'               => new external_value(PARAM_INT, get_string('attemptonlast_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'canredoquestions'            => new external_value(PARAM_INT, get_string('canredoquestions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'preferredbehaviour'          => new external_value(PARAM_TEXT, get_string('preferredbehaviour_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'shuffleanswers'              => new external_value(PARAM_INT, get_string('shuffleanswers_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'navmethod'                   => new external_value(PARAM_TEXT, get_string('navmethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'questionsperpage'            => new external_value(PARAM_INT, get_string('questionsperpage_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'grademethod'                 => new external_value(PARAM_TEXT, get_string('grademethod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'attempts'                    => new external_value(PARAM_INT, get_string('attempts_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'gradecat'                    => new external_value(PARAM_TEXT, get_string('gradecat_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'graceperiod'                 => new external_value(PARAM_INT, get_string('graceperiod_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'overduehandling'             => new external_value(PARAM_TEXT, get_string('overduehandling_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'timelimit'                   => new external_value(PARAM_INT, get_string('timelimit_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
+                'visible'                     => new external_value(PARAM_INT, get_string('visible_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 1),
+                'browsersecurity'             => new external_value(PARAM_TEXT, get_string('browsersecurity_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, '-'),
+                'quizpassword'                => new external_value(PARAM_TEXT, get_string('quizpassword_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, ''),
+                'questiondecimalpoints'       => new external_value(PARAM_INT, get_string('questiondecimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'decimalpoints'               => new external_value(PARAM_INT, get_string('decimalpoints_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
+                'timeopen'                    => new external_value(PARAM_INT, get_string('timeopen_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
+                'timeclose'                   => new external_value(PARAM_INT, get_string('timeclose_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
+                'intro'                       => new external_value(PARAM_RAW, get_string('intro_desc', 'local_qbankremotemanager', VALUE_DEFAULT, '')),
+                'showdescription'             => new external_value(PARAM_INT, get_string('showdescription_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
                 'attemptduring'               => new external_value(PARAM_INT, get_string('attemptduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
                 'correctnessduring'           => new external_value(PARAM_INT, get_string('correctnessduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
                 'maxmarksduring'              => new external_value(PARAM_INT, get_string('maxmarksduring_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
@@ -126,9 +149,9 @@ class qbankremotemanager_external extends external_api {
                 'specificfeedbackclosed'      => new external_value(PARAM_INT, get_string('specificfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
                 'generalfeedbackclosed'       => new external_value(PARAM_INT, get_string('generalfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
                 'rightanswerclosed'           => new external_value(PARAM_INT, get_string('rightanswerclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
-                'overallfeedbackclosed'       => new external_value(PARAM_INT, get_string('overallfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0)
+                'overallfeedbackclosed'       => new external_value(PARAM_INT, get_string('overallfeedbackclosed_desc', 'local_qbankremotemanager'), VALUE_DEFAULT, 0),
             ], get_string('config_desc', 'local_qbankremotemanager')),
-            "itemid" => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager'))
+            "itemid" => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager')),
         ]);
     }
 
@@ -141,8 +164,10 @@ class qbankremotemanager_external extends external_api {
      * @param object $config      contains configuration for given quiz (quiz name, password, duration etc.)
      * @param int    $itemid      item id for the file with questions in draft area
      * 
-     * @return object where quiz ID is returned with the status. The status can be either "OK" or "ERROR", when error is present you will recieve error message with it. If everything went fine you will recieve number of imported questions.
-    */
+     * @return object where quiz ID is returned with the status. 
+     * The status can be either "OK" or "ERROR", when error is present you will recieve error message with it. 
+     * If everything went fine you will recieve number of imported questions.
+     */
     public static function upload_quiz($config, $itemid) {
         global $DB;
 
@@ -165,25 +190,30 @@ class qbankremotemanager_external extends external_api {
         require_capability('mod/quiz:manage', $thiscontext);
 
         //validate config before importing questions to question bank
-        $validated_config = self::prepare_quiz_data($config, $course);
+        $validatedconfig = self::prepare_quiz_data($config, $course);
         
         [$defaultcategory, $contexts] = self::get_default_category_and_contexts($thiscontext);
 
-        $added_question_ids = self::import_questions_to_qbank($itemid, $defaultcategory, $config["courseid"], $contexts);
+        $addedquestionids = self::import_questions_to_qbank($itemid, $defaultcategory, $config["courseid"], $contexts);
 
-        if(count($added_question_ids) == 0){
+        if (count($addedquestionids) == 0) {
             return ["status" => "ERROR", "error_message" => "No questions in file"];
         }
 
-        $validated_config->grade = self::get_sum_of_default_question_grades($added_question_ids);
+        $validatedconfig->grade = self::get_sum_of_default_question_grades($addedquestionids);
         
-        $cmid = self::add_test($validated_config, $course);
+        $cmid = self::add_test($validatedconfig, $course);
 
-        self::add_questions_to_quiz($cmid, $added_question_ids, $course);
+        self::add_questions_to_quiz($cmid, $addedquestionids, $course);
 
-        return ['quizid' => $cmid, 'status' => 'OK', "num_of_questions" => count($added_question_ids)];
+        return ['quizid' => $cmid, 'status' => 'OK', "num_of_questions" => count($addedquestionids)];
     }
 
+    /**
+     * Quiz ID is returned with the status.
+     * The status can be either "OK" or "ERROR", when error is present you will recieve error message with it.
+     * If everything went fine you will recieve number of imported questions.
+     */
     public static function upload_quiz_returns() {
         return new external_single_structure([
             'quizid'           => new external_value(PARAM_INT, get_string('quizid_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
@@ -193,7 +223,10 @@ class qbankremotemanager_external extends external_api {
         ]);
     }
 
-    public static function get_question_bank_categories_parameters(){
+    /**
+     * Only courseid is expected.
+     */
+    public static function get_question_bank_categories_parameters() {
         return new external_function_parameters([
             "courseid" => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager'))
         ]);
@@ -204,41 +237,45 @@ class qbankremotemanager_external extends external_api {
      * 
      * @param int $courseid ID of the course we want the question categories of
      * 
-     * @return object where you can retrieve the courseContextId and the array of categories, where each category has an ID and the title 
-    */
-    public static function get_question_bank_categories($courseid){
+     * @return object where you can retrieve the courseContextId and the array of categories, where each category has an ID and the title
+     */
+    public static function get_question_bank_categories($courseid) {
         global $DB;
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
 
-        $courseContext = context_course::instance($courseid);
-        self::validate_context($courseContext);
+        $coursecontext = context_course::instance($courseid);
+        self::validate_context($coursecontext);
 
-        require_capability('moodle/question:editall', $courseContext);
-        require_capability('moodle/question:managecategory', $courseContext);
+        require_capability('moodle/question:editall', $coursecontext);
+        require_capability('moodle/question:managecategory', $coursecontext);
 
-        $allCourseContexts = new question_edit_contexts($courseContext);
+        $allcoursecontexts = new question_edit_contexts($coursecontext);
 
-        $catmenu = manage_categories_helper::question_category_options($allCourseContexts->all(), false, 0, true, -1, false);
+        $catmenu = manage_categories_helper::question_category_options($allcoursecontexts->all(), false, 0, true, -1, false);
       
         $values = [];
         foreach ($catmenu as $menu) {
             foreach ($menu as $heading => $catlist) {
                 foreach ($catlist as $key => $value) {
-                    $sanitizedTitle = str_replace("&nbsp;", "", $value); 
+                    $sanitizedtitle = str_replace("&nbsp;", "", $value);
                     $values[] = (object) [
                         // not using str_contains to be compatible with PHP 7
                         'id' => strpos($key, ',') !== false ? substr($key, 0, strpos($key, ',')) : $key,
-                        'title' => $sanitizedTitle,
+                        'title' => $sanitizedtitle,
                     ];
                 }
             }
         }
 
-        return ['courseContextId' => $courseContext->id, "categories" => $values];
+        return ['courseContextId' => $coursecontext->id, "categories" => $values];
     }
 
-    public static function get_question_bank_categories_returns(){
+    /**
+     * User will recieved an object where you can retrieve the courseContextId and
+     * the array of categories, where each category has an ID and the title 
+     */
+    public static function get_question_bank_categories_returns() {
         return new external_single_structure([
             'courseContextId' => new external_value(PARAM_INT, get_string('coursecontextid_desc', 'local_qbankremotemanager')),
             'categories' => new external_multiple_structure(
@@ -250,9 +287,12 @@ class qbankremotemanager_external extends external_api {
         ]);
     }
 
-    public static function upload_questions_parameters(){
+    /**
+     * Only courseid and file id are expected.
+     */
+    public static function upload_questions_parameters() {
         return new external_function_parameters([
-            "courseid" => new external_value(PARAM_INT,  get_string('courseid_desc', 'local_qbankremotemanager')),
+            "courseid" => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
             'itemid'   => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager'))
         ]);
     }
@@ -266,36 +306,38 @@ class qbankremotemanager_external extends external_api {
      * @param int $courseid ID of the course you want to import the questions to
      * @param int $itemid ID of the file retrieved after uploading the file to the draft area
      * 
-     * @return object with the status. The status can be either "OK" or "ERROR", when error is present you will recieve error message with it. If everything went fine you will recieve number of imported questions.
-    */
-    public static function upload_questions($courseid, $itemid){
+     * @return object with the status.
+     * The status can be either "OK" or "ERROR", when error is present you will recieve error message with it.
+     * If everything went fine you will recieve number of imported questions.
+     */
+    public static function upload_questions($courseid, $itemid) {
         global $DB;
 
         $params = self::validate_parameters(self::upload_questions_parameters(), ['courseid' => $courseid, 'itemid' => $itemid]);
         
         $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
 
-        $courseContext = \context_course::instance($params['courseid']);
-        self::validate_context($courseContext);
+        $coursecontext = \context_course::instance($params['courseid']);
+        self::validate_context($coursecontext);
 
-        require_capability('moodle/question:add', $courseContext);
-        require_capability('moodle/question:editall', $courseContext);
-        require_capability('moodle/question:managecategory', $courseContext);
-        require_capability('moodle/question:moveall', $courseContext);
-        require_capability('moodle/question:useall', $courseContext);
+        require_capability('moodle/question:add', $coursecontext);
+        require_capability('moodle/question:editall', $coursecontext);
+        require_capability('moodle/question:managecategory', $coursecontext);
+        require_capability('moodle/question:moveall', $coursecontext);
+        require_capability('moodle/question:useall', $coursecontext);
 
-        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($courseContext);
+        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($coursecontext);
 
-        $added_question_ids = self::import_questions_to_qbank($itemid, $defaultcategory, $params["courseid"], $contexts);
+        $addedquestionids = self::import_questions_to_qbank($itemid, $defaultcategory, $params["courseid"], $contexts);
 
-        if(count($added_question_ids) == 0){
+        if (count($addedquestionids) == 0) {
             return ["status" => "ERROR", "error_message" => "No questions in file"];
         }
         
-        return ['status' => 'OK', "num_of_questions" => count($added_question_ids)];
+        return ['status' => 'OK', "num_of_questions" => count($addedquestionids)];
     }
 
-    public static function upload_questions_returns(){
+    public static function upload_questions_returns() {
          return new external_single_structure([
             'status'           => new external_value(PARAM_TEXT, get_string('status_desc', 'local_qbankremotemanager')),
             'num_of_questions' => new external_value(PARAM_INT, get_string('num_of_questions_desc', 'local_qbankremotemanager'), VALUE_OPTIONAL),
@@ -310,11 +352,11 @@ class qbankremotemanager_external extends external_api {
      * 
      * @return array [0] = default category
      *               [1] = question edit contexts
-    */
-    private static function get_default_category_and_contexts($context){
+     */
+    private static function get_default_category_and_contexts($context) {
         $contexts = new question_edit_contexts($context);
 
-        $defaultcategory = question_make_default_categories($contexts->all());  
+        $defaultcategory = question_make_default_categories($contexts->all());
 
         return [$defaultcategory, $contexts];
     }
@@ -329,7 +371,7 @@ class qbankremotemanager_external extends external_api {
      * 
      * @return array of ids of newly imported questions
      */
-    private static function import_questions_to_qbank($itemid, $defaultcategory, $courseid, $contexts){
+    private static function import_questions_to_qbank($itemid, $defaultcategory, $courseid, $contexts) {
         global $DB;
 
         qbank_helper::require_plugin_enabled('qbank_importquestions');
@@ -338,8 +380,8 @@ class qbankremotemanager_external extends external_api {
 
         $tempfolder = make_request_directory();
         $filename = $file->get_filename();
-        $realFileName = $tempfolder . '/' . $filename;
-        $file->copy_content_to($realFileName);
+        $realfileName = $tempfolder . '/' . $filename;
+        $file->copy_content_to($realfileName);
         
         $course = new stdClass();
         $course->id = $courseid;
@@ -351,14 +393,14 @@ class qbankremotemanager_external extends external_api {
         $qformat->setContexts($contexts);
         $qformat->setCategory($category);
         $qformat->setCourse($course);
-        $qformat->setFilename($realFileName);
+        $qformat->setFilename($realfileName);
         $qformat->setRealfilename($filename);
         $qformat->setMatchgrades("error");
         $qformat->setCatfromfile(1);
         $qformat->setContextfromfile(1);
         $qformat->setStoponerror(1);
 
-        // supress echo from importprocess function - its messing up API response 
+        // supress echo from importprocess function - its messing up API response
         ob_start();
         $success = $qformat->importprocess();
         ob_end_clean();
@@ -377,7 +419,7 @@ class qbankremotemanager_external extends external_api {
      * 
      * @return object first file retrieved from the draft area with given id
      */
-    private static function get_draft_file($itemid){
+    private static function get_draft_file($itemid) {
         global $USER;
 
         $fs = get_file_storage();
@@ -386,7 +428,7 @@ class qbankremotemanager_external extends external_api {
 
         $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $itemid, 'id DESC', false);
 
-        if (empty($files)){
+        if (empty($files)) {
             throw new moodle_exception('file_not_found', 'local_qbankremotemanager');
         }
 
@@ -396,20 +438,20 @@ class qbankremotemanager_external extends external_api {
     /**
      * Function used to compute sum of defaultmarks of given questions
      * 
-     * @param array $questions_ids - array of questions ids we want to get sum of defaultmark attribute
+     * @param array $questionsids - array of questions ids we want to get sum of defaultmark attribute
      * 
      * @return int sum of defaultmarks
-    */
-    private static function get_sum_of_default_question_grades($questions_ids){
+     */
+    private static function get_sum_of_default_question_grades($questionsids) {
         global $DB;
 
-        if (empty($questions_ids)) {
+        if (empty($questionsids)) {
             return 0;
         }
 
         $res = 0;
 
-        $questions = $DB->get_records_list('question', 'id', $questions_ids, '', 'id, defaultmark');
+        $questions = $DB->get_records_list('question', 'id', $questionsids, '', 'id, defaultmark');
 
         foreach ($questions as $q) {
             $res += $q->defaultmark;
@@ -421,13 +463,13 @@ class qbankremotemanager_external extends external_api {
     /**
      * Function used to add new test with given config to the course.
      * 
-     * @param object $validated_config config from the user
+     * @param object $validatedconfig config from the user
      * @param object $course course you want to work with
-    */
-    private static function add_test($validated_config, $course){
+     */
+    private static function add_test($validatedconfig, $course) {
         try {
-            $saved_module = add_moduleinfo($validated_config, $course);
-            return $saved_module->coursemodule;
+            $savedmodule = add_moduleinfo($validatedconfig, $course);
+            return $savedmodule->coursemodule;
         } catch (Exception $e) {
             throw new moodle_exception('error_adding_module', 'local_qbankremotemanager', '', $e->getMessage());
         }
@@ -450,91 +492,164 @@ class qbankremotemanager_external extends external_api {
         $moduleinfo = new stdClass();
 
         $moduleinfo->modulename = 'quiz';
-        $moduleinfo->module     = $DB->get_field('modules', 'id', array('name' => 'quiz'));
-        $moduleinfo->course     = $course->id;
+        $moduleinfo->module = $DB->get_field('modules', 'id', array('name' => 'quiz'));
+        $moduleinfo->course = $course->id;
         
-        $moduleinfo->decimalpoints         = self::validate_and_return_integer_value($config, "decimalpoints", $quizconfig->decimalpoints, 0, QUIZ_MAX_DECIMAL_OPTION);
-        $moduleinfo->questiondecimalpoints = self::validate_and_return_integer_value($config, "questiondecimalpoints", $quizconfig->questiondecimalpoints, -1, QUIZ_MAX_Q_DECIMAL_OPTION);
+        $moduleinfo->decimalpoints = self::validate_and_return_integer_value(
+            $config, 
+            "decimalpoints", 
+            $quizconfig->decimalpoints, 
+            0, 
+            QUIZ_MAX_DECIMAL_OPTION
+        );
+
+        $moduleinfo->questiondecimalpoints = self::validate_and_return_integer_value(
+            $config, 
+            "questiondecimalpoints", 
+            $quizconfig->questiondecimalpoints, 
+            -1, 
+            QUIZ_MAX_Q_DECIMAL_OPTION
+        );
 
         $moduleinfo->quizpassword = self::clean_validate_and_return_text_value($config, "quizpassword", "", PARAM_TEXT);
         
-        $moduleinfo->visible             = self::validate_and_return_bool_value($config, "visible", 1);
+        $moduleinfo->visible = self::validate_and_return_bool_value($config, "visible", 1);
         $moduleinfo->visibleoncoursepage = $moduleinfo->visible;
 
-
-        $moduleinfo->name            = self::clean_validate_and_return_text_value($config, "quizname", "New quiz", PARAM_TEXT);
-        $moduleinfo->intro           = self::clean_validate_and_return_text_value($config, "intro", "", PARAM_RAW);
-        $moduleinfo->introformat     = FORMAT_HTML;
+        $moduleinfo->name = self::clean_validate_and_return_text_value($config, "quizname", "New quiz", PARAM_TEXT);
+        $moduleinfo->intro = self::clean_validate_and_return_text_value($config, "intro", "", PARAM_RAW);
+        $moduleinfo->introformat = FORMAT_HTML;
         $moduleinfo->showdescription =  self::validate_and_return_bool_value($config, 'showdescription', 0);
 
         $moduleinfo->timeopen  = (int)($config["timeopen"] ?? 0);
         $moduleinfo->timeclose = (int)($config["timeclose"] ?? 0);
         if ($moduleinfo->timeclose > 0 && $moduleinfo->timeclose < $moduleinfo->timeopen) {
-            throw new moodle_exception('invalid_argument', 'local_qbankremotemanager', '', 'Time for closing must be after the time for opening.');
+            throw new moodle_exception(
+                'invalid_argument',
+                'local_qbankremotemanager',
+                '',
+                'Time for closing must be after the time for opening.'
+            );
         }
 
-        $moduleinfo->timelimit       = (int)($config["timelimit"] ?? $quizconfig->timelimit);
+        $moduleinfo->timelimit = (int)($config["timelimit"] ?? $quizconfig->timelimit);
         $moduleinfo->timelimitenable =  $moduleinfo->timelimit > 0;
 
         $valid_overdue_handling_values = array_keys(quiz_get_overdue_handling_options());
-        $moduleinfo->overduehandling   = self::clean_validate_and_return_text_value($config, "overduehandling", $quizconfig->overduehandling, PARAM_TEXT, $valid_overdue_handling_values);
+        $moduleinfo->overduehandling = self::clean_validate_and_return_text_value(
+            $config, 
+            "overduehandling", 
+            $quizconfig->overduehandling, 
+            PARAM_TEXT, 
+            $valid_overdue_handling_values
+        );
         
         $moduleinfo->graceperiod = (int)($config["graceperiod"] ?? $quizconfig->graceperiod);
 
-        $valid_grade_cats        = grade_get_categories_menu($course->id);
-        $default_grade_cat       = reset($valid_grade_cats);
-        $user_selected_grade_cat = self::clean_validate_and_return_text_value($config, "gradecat", $default_grade_cat, PARAM_TEXT, $valid_grade_cats);
-        $moduleinfo->gradecat    = array_search($user_selected_grade_cat, $valid_grade_cats);
-
-        $moduleinfo->attempts    = self::validate_and_return_integer_value($config, "attempts", 1, 0, QUIZ_MAX_ATTEMPT_OPTION);
-
-        $valid_grade_methods        = quiz_get_grading_options();
-        $valid_grade_keys           = array_values($valid_grade_methods);
-        $user_selected_grade_method = self::clean_validate_and_return_text_value($config, "grademethod", $quizconfig->grademethod, PARAM_TEXT, $valid_grade_keys);
+        $validgradecats = grade_get_categories_menu($course->id);
+        $defaultgradecat = reset($validgradecats);
         
-        // the existence in the array is validated in the clean_validate_and_return_text_value function a we need to incremenet one because this is one-based indexing
-        $grademethod_key            = array_search($user_selected_grade_method, $valid_grade_keys) + 1;
+        $userselectedgradecat = self::clean_validate_and_return_text_value(
+            $config, 
+            "gradecat", 
+            $defaultgradecat, 
+            PARAM_TEXT, 
+            $validgradecats
+        );
+
+        $moduleinfo->gradecat = array_search($userselectedgradecat, $validgradecats);
+
+        $moduleinfo->attempts = self::validate_and_return_integer_value($config, "attempts", 1, 0, QUIZ_MAX_ATTEMPT_OPTION);
+
+        $validgrademethods = quiz_get_grading_options();
+        $validgradekeys = array_values($validgrademethods);
+        $userselectedgrademethod = self::clean_validate_and_return_text_value(
+            $config, 
+            "grademethod", 
+            $quizconfig->grademethod, 
+            PARAM_TEXT, 
+            $validgradekeys
+        );
+        
+        /* the existence in the array is validated in the clean_validate_and_return_text_value 
+         * function a we need to incremenet one because this is one-based indexing
+         */
+        $grademethod_key = array_search($userselectedgrademethod, $validgradekeys) + 1;
 
         $moduleinfo->grademethod = $grademethod_key;
 
-        $all_question_per_page_options = quiz_questions_per_page_options();
-        $moduleinfo->questionsperpage  = self::validate_and_return_integer_value($config, "questionsperpage", $quizconfig->questionsperpage, 0, count($all_question_per_page_options) - 1);
+        $allquestionperpageoptions = quiz_questions_per_page_options();
+        $moduleinfo->questionsperpage = self::validate_and_return_integer_value(
+            $config,
+            "questionsperpage",
+            $quizconfig->questionsperpage,
+            0, 
+            count($allquestionperpageoptions) - 1
+        );
         
-        $all_nav_methods = array_keys(quiz_get_navigation_options());
+        $allnavmethods = array_keys(quiz_get_navigation_options());
 
-        $moduleinfo->navmethod = self::clean_validate_and_return_text_value($config, "navmethod", $quizconfig->navmethod, PARAM_TEXT, $all_nav_methods);
+        $moduleinfo->navmethod = self::clean_validate_and_return_text_value(
+            $config,
+            "navmethod",
+            $quizconfig->navmethod,
+            PARAM_TEXT, 
+            $allnavmethods
+        );
 
         $moduleinfo->shuffleanswers = self::validate_and_return_bool_value($config, "shuffleanswers", $quizconfig->shuffleanswers);
 
-        $available_preffered_behaviours = array_keys(question_engine::get_behaviour_options(''));
-        $moduleinfo->preferredbehaviour = self::clean_validate_and_return_text_value($config, "preferredbehaviour", $quizconfig->preferredbehaviour, PARAM_TEXT, $available_preffered_behaviours);
+        $availableprefferedbehaviours = array_keys(question_engine::get_behaviour_options(''));
+        $moduleinfo->preferredbehaviour = self::clean_validate_and_return_text_value(
+            $config,
+            "preferredbehaviour",
+            $quizconfig->preferredbehaviour,
+            PARAM_TEXT,
+            $availableprefferedbehaviours
+        );
 
-        $moduleinfo->canredoquestions = self::validate_and_return_bool_value($config, "canredoquestions", $quizconfig->canredoquestions);
+        $moduleinfo->canredoquestions = self::validate_and_return_bool_value(
+            $config,
+            "canredoquestions",
+            $quizconfig->canredoquestions
+        );
 
         $moduleinfo->attemptonlast = self::validate_and_return_bool_value($config, "attemptonlast", $quizconfig->attemptonlast);
 
-        $available_user_image_options = quiz_get_user_image_options();
-        $available_user_image_values = array_values($available_user_image_options);
-        $defaul_user_image_option = $available_user_image_options[$quizconfig->showuserpicture];
-        $user_selected_value = self::clean_validate_and_return_text_value($config, "showuserpicture", $defaul_user_image_option, PARAM_TEXT, $available_user_image_values);
-        $key = array_search($user_selected_value, $available_user_image_options);
+        $availableuserimageoptions = quiz_get_user_image_options();
+        $availableuserimagevalues = array_values($availableuserimageoptions);
+        $defauluserimageoption = $availableuserimageoptions[$quizconfig->showuserpicture];
+        $userselectedvalue = self::clean_validate_and_return_text_value(
+            $config,
+            "showuserpicture",
+            $defauluserimageoption,
+            PARAM_TEXT,
+            $availableuserimagevalues
+        );
+        $key = array_search($userselectedvalue, $availableuserimageoptions);
         $moduleinfo->showuserpicture = $key;
         
         $moduleinfo->allowofflineattempts = 0;
 
-        $max_section_number = course_format::instance($course)->get_last_section_number();
-        $min_section_number = 0;
-        $moduleinfo->section = self::validate_and_return_integer_value($config, "section", 0, $min_section_number, $max_section_number);
+        $maxsectionnumber = course_format::instance($course)->get_last_section_number();
+        $minsectionnumber = 0;
+        $moduleinfo->section = self::validate_and_return_integer_value(
+            $config,
+            "section",
+            0,
+            $minsectionnumber,
+            $maxsectionnumber
+        );
 
-        $gradepass_from_user = (float)($config["gradepass"] ?? 0.0);
+        $gradepassfromuser = (float)($config["gradepass"] ?? 0.0);
 
-        if ($gradepass_from_user < 0) {
+        if ($gradepassfromuser < 0) {
             throw new moodle_exception("gradepass_too_low", 'local_qbankremotemanager');
         }
 
-        $moduleinfo->gradepass = $gradepass_from_user;
+        $moduleinfo->gradepass = $gradepassfromuser;
 
-       $review_fields = [
+       $reviewfields = [
             'attempt',
             'correctness',
             'maxmarks',
@@ -552,36 +667,53 @@ class qbankremotemanager_external extends external_api {
             'closed'
         ];
 
-        foreach ($review_fields as $moodle_field => $client_suffix) {
-            foreach ($states as $state_name) {
-                $client_key = $client_suffix . $state_name;
+        foreach ($reviewfields as $moodlefield => $clientsuffix) {
+            foreach ($states as $statename) {
+                $clientkey = $clientsuffix . $statename;
 
-                $user_value = (int)($config[$client_key] ?? 0);
+                $uservalue = (int)($config[$clientkey] ?? 0);
 
-                $moduleinfo->$client_key = $user_value;
+                $moduleinfo->$clientkey = $uservalue;
             }
         }
        
         $moduleinfo->groupmode = 0;
 
-        $browser_security = clean_param($config["browsersecurity"], PARAM_TEXT);
+        $browsersecurity = clean_param($config["browsersecurity"], PARAM_TEXT);
 
-        $access_manager_exists = class_exists("mod_quiz\access_manager");
-        if ($access_manager_exists){
-            $browser_sec_values = array_keys(access_manager::get_browser_security_choices());
-            $moduleinfo->browsersecurity = self::clean_validate_and_return_text_value($config, "browsersecurity", '-', PARAM_TEXT, $browser_sec_values);
+        $accessmanagerexists = class_exists("mod_quiz\access_manager");
+        if ($accessmanagerexists) {
+            $browsersecvalues = array_keys(access_manager::get_browser_security_choices());
+            $moduleinfo->browsersecurity = self::clean_validate_and_return_text_value(
+                $config,
+                "browsersecurity",
+                '-',
+                PARAM_TEXT,
+                $browsersecvalues
+            );
         }
         else {
             //needed for quiz_access_manager in versions older than 4.2
             require_once("$CFG->dirroot/mod/quiz/accessmanager.php");
             
-            $older_access_manager_exists = class_exists("quiz_access_manager");
-            if ($older_access_manager_exists){
-                $browser_sec_values = array_keys(\quiz_access_manager::get_browser_security_choices());
-                $moduleinfo->browsersecurity = self::clean_validate_and_return_text_value($config, "browsersecurity", '-', PARAM_TEXT, $browser_sec_values);
+            $olderaccessmanagerexists = class_exists("quiz_access_manager");
+            if ($olderaccessmanagerexists) {
+                $browsersecvalues = array_keys(\quiz_access_manager::get_browser_security_choices());
+                $moduleinfo->browsersecurity = self::clean_validate_and_return_text_value(
+                    $config,
+                    "browsersecurity",
+                    '-',
+                    PARAM_TEXT,
+                    $browsersecvalues
+                );
             }
-            else{
-                throw new moodle_exception('browser_security_not_available', 'local_qbankremotemanager', '', 'It is not possible to retrieve browser security parameters');
+            else {
+                throw new moodle_exception(
+                    'browser_security_not_available',
+                    'local_qbankremotemanager',
+                    '',
+                    'It is not possible to retrieve browser security parameters'
+                );
             }
         }
 
@@ -602,19 +734,25 @@ class qbankremotemanager_external extends external_api {
      * 
      * @return int validated config value
     */
-    private static function validate_and_return_integer_value($config, $key, $default, $min, $max){
-        $config_value = (int)($config[$key] ?? $default);
+    private static function validate_and_return_integer_value($config, $key, $default, $min, $max) {
+        $configvalue = (int)($config[$key] ?? $default);
         
-        if ($config_value < $min || $config_value > $max) {
-            $errorData = new stdClass();
-            $errorData->key = $key;
-            $errorData->max = $max;
-            $errorData->min = $min;
+        if ($configvalue < $min || $configvalue > $max) {
+            $errordata = new stdClass();
+            $errordata->key = $key;
+            $errordata->max = $max;
+            $errordata->min = $min;
 
-            throw new moodle_exception('badargument_with_range', 'local_qbankremotemanager', '', $errorData, "Invalid value for $key. Value has to be between $min and $max but was $config_value");
+            throw new moodle_exception(
+                'badargument_with_range',
+                'local_qbankremotemanager',
+                '',
+                $errordata,
+                "Invalid value for $key. Value has to be between $min and $max but was $configvalue"
+            );
         }
 
-        return $config_value;
+        return $configvalue;
     }
 
     /**
@@ -622,25 +760,31 @@ class qbankremotemanager_external extends external_api {
      * 
      * @param object $config whole config from user
      * @param string $key key for the value we want to validate
-     * @param int $default default value to use when given key is undefined in $config 
+     * @param int $default default value to use when given key is undefined in $config
      * 
      * @return int validated value (1 or 0)
     */
-    private static function validate_and_return_bool_value($config, $key, $default){
+    private static function validate_and_return_bool_value($config, $key, $default) {
         if ($default != 1 && $default != 0) {
             throw new moodle_exception('internal_error', 'local_qbankremotemanager');
         }
 
-        $config_value = (int)($config[$key] ?? $default);
+        $configvalue = (int)($config[$key] ?? $default);
 
-        if ($config_value != 0 && $config_value != 1){
-            $errorData = new stdClass();
-            $errorData->key = $key;
+        if ($configvalue != 0 && $configvalue != 1) {
+            $errordata = new stdClass();
+            $errordata->key = $key;
 
-            throw new moodle_exception('badargument_bool', 'local_qbankremotemanager', '', $errorData, "Invalid value for $key. Expected 1 or 0");
+            throw new moodle_exception(
+                'badargument_bool',
+                'local_qbankremotemanager',
+                '',
+                $errordata,
+                "Invalid value for $key. Expected 1 or 0"
+            );
         }
 
-        return $config_value;
+        return $configvalue;
     }
 
     /**
@@ -649,56 +793,62 @@ class qbankremotemanager_external extends external_api {
      * @param object $config whole config from user
      * @param string $key key for the value we want to validate
      * @param int $default default value to use when given key is undefined in $config 
-     * @param constant $expected_type use one of the PARAM_TEXT, PARAM_INT etc. Used in clean_param function.
-     * @param array $valid_values array of expected values. Optional, if none passed only clean_param function validates the value.
+     * @param constant $expectedtype use one of the PARAM_TEXT, PARAM_INT etc. Used in clean_param function.
+     * @param array $validvalues array of expected values. Optional, if none passed only clean_param function validates the value.
      * 
      * @return string validated config value
      */
-    private static function clean_validate_and_return_text_value($config, $key, $default, $expected_type, $valid_values = []){
-        $config_value = clean_param($config[$key] ?? $default, $expected_type);
+    private static function clean_validate_and_return_text_value($config, $key, $default, $expectedtype, $validvalues = []) {
+        $configvalue = clean_param($config[$key] ?? $default, $expectedtype);
 
-        if (count($valid_values) > 0 && !in_array($config_value, $valid_values)){
+        if (count($validvalues) > 0 && !in_array($configvalue, $validvalues)) {
             $expected = "[";
 
-            foreach ($valid_values as $val){
+            foreach ($validvalues as $val) {
                 $expected .= " $val,";
             }
 
             $expected .= "]";
 
-            $errorData = new stdClass();
-            $errorData->key = $key;
-            $errorData->expected = $expected;
-            $errorData->actual = $config_value;
+            $errordata = new stdClass();
+            $errordata->key = $key;
+            $errordata->expected = $expected;
+            $errordata->actual = $configvalue;
 
-            throw new moodle_exception('badargument_with_expected_values', 'local_qbankremotemanager', '', $errorData, "Invalid value for $key. Expected one of: $expected but was $config_value");
+            throw new moodle_exception(
+                'badargument_with_expected_values',
+                'local_qbankremotemanager',
+                '',
+                $errordata,
+                "Invalid value for $key. Expected one of: $expected but was $configvalue"
+            );
         }
 
-        return $config_value;
+        return $configvalue;
     }
 
     /**
      * Helper function to add questions to quiz.
      * 
      * @param int $cmid course module id
-     * @param array $question_ids array of question ids we want to add to quiz
+     * @param array $questionids array of question ids we want to add to quiz
      * @param object $course course we are working in
     */
-    private static function add_questions_to_quiz($cmid, $question_ids, $course){
+    private static function add_questions_to_quiz($cmid, $questionids, $course) {
         list($quiz, $cm) = get_module_from_cmid($cmid);
 
-        $quiz_settings_exists = class_exists("mod_quiz\quiz_settings");
+        $quizsettingsexists = class_exists("mod_quiz\quiz_settings");
 
-        if($quiz_settings_exists){
+        if ($quizsettingsexists) {
             $quizobj = new quiz_settings($quiz, $cm, $course);
             $gradecalculator = $quizobj->get_grade_calculator();
 
-            self::add_questions($question_ids, $quiz);
+            self::add_questions($questionids, $quiz);
             
             $gradecalculator->recompute_quiz_sumgrades();
         }
-        else{ //in older versions (< 4.2) class quiz settings doesn't exists, so we use older way of adding questions and updatings grades
-            self::add_questions($question_ids, $quiz);
+        else { //in older versions (< 4.2) class quiz settings doesn't exists, so we use older way of adding questions and updatings grades
+            self::add_questions($questionids, $quiz);
             quiz_delete_previews($quiz);
             quiz_update_sumgrades($quiz);
         }
@@ -707,13 +857,13 @@ class qbankremotemanager_external extends external_api {
     /**
      * Helper function to add question to given quiz
      * 
-     * @param array $question_ids list of question ids we want to include in given quiz
+     * @param array $questionids list of question ids we want to include in given quiz
      * @param object $quiz quiz we want to import questions to
     */
-    private static function add_questions($question_ids, $quiz){
-        foreach($question_ids as $question_id){
-            quiz_require_question_use($question_id);
-            quiz_add_quiz_question($question_id, $quiz, 0);
+    private static function add_questions($questionids, $quiz) {
+        foreach ($questionids as $questionid) {
+            quiz_require_question_use($questionid);
+            quiz_add_quiz_question($questionid, $quiz, 0);
         }
     }
 }
