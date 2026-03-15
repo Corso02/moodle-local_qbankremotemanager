@@ -429,7 +429,8 @@ class qbankremotemanager_external extends external_api
             'questionbankid' => new external_value(
                 PARAM_INT,
                 get_string('question_bank_id_desc', 'local_qbankremotemanager'),
-                VALUE_OPTIONAL
+                VALUE_DEFAULT,
+                null
             ),
         ]);
     }
@@ -545,7 +546,8 @@ class qbankremotemanager_external extends external_api
             'questionbankid' => new external_value(
                 PARAM_INT,
                 get_string('question_bank_id_desc', 'local_qbankremotemanager'),
-                VALUE_OPTIONAL
+                VALUE_DEFAULT,
+                null
             ),
         ]);
     }
@@ -634,7 +636,8 @@ class qbankremotemanager_external extends external_api
             'questionbankid' => new external_value(
                 PARAM_INT,
                 get_string('question_bank_id_desc', 'local_qbankremotemanager'),
-                VALUE_OPTIONAL
+                VALUE_DEFAULT,
+                null
             ),
         ]);
     }
