@@ -39,6 +39,7 @@ Uploads questions into the Question Bank of a given course.
 **Parameters**
 - `courseid` (int): Target course ID
 - `itemid` (int): Draft file item ID containing a question XML file
+- `questionbankid` (int): OPTIONAL on version 4
 
 **Returns**
 - Status
@@ -52,6 +53,7 @@ Creates a quiz in a course, imports questions from an uploaded file, and adds th
 **Parameters**
 - `config` (object): Quiz configuration (name, timing, grading, visibility, completion, etc.)
 - `itemid` (int): Draft file item ID containing a question XML file
+- `questionbankid` (int): OPTIONAL on version 4
 
 **Returns**
 - Quiz course module ID
@@ -65,10 +67,22 @@ Returns all available question categories for a given course context.
 
 **Parameters**
 - `courseid` (int)
+- `questionbankid` (int): OPTIONAL on version 4
 
 **Returns**
 - Course context ID
 - List of categories (ID, title)
+
+---
+
+### 5. `local_qbankremotemanager_get_question_banks_for_course`
+Returns all available questions banks for given course
+
+**Parameters**
+- `courseid` (int)
+
+**Returns**
+- List of questions banks (ID, title)
 
 ---
 

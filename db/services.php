@@ -53,6 +53,13 @@ $functions = [
         'type'         => 'write',
         'ajax'         => true,
     ],
+    'local_qbankremotemanager_get_question_banks_for_course' => [
+        'classname'    => 'local_qbankremotemanager\external\qbankremotemanager_external',
+        'methodname'   => 'get_question_banks_for_course',
+        'description'  => 'Retrieves all question banks available in given course.',
+        'type'         => 'read',
+        'ajax'         => true,
+    ],
 ];
 
 $services = [
@@ -62,6 +69,7 @@ $services = [
             'local_qbankremotemanager_am_i_here',
             'local_qbankremotemanager_get_question_categories',
             'local_qbankremotemanager_upload_questions',
+            'local_qbankremotemanager_get_question_banks_for_course',
         ],
         'restrictedusers' => 0,
         'enabled'         => 1,

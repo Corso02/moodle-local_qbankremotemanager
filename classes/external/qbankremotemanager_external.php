@@ -36,6 +36,7 @@ use mod_quiz\quiz_settings;
 use mod_quiz\access_manager;
 use question_engine;
 use core_courseformat\base as course_format;
+use core_question\local\bank\question_bank_helper;
 
 require_once("$CFG->libdir/externallib.php");
 require_once("$CFG->libdir/questionlib.php");
@@ -425,6 +426,11 @@ class qbankremotemanager_external extends external_api
                 ),
             ], get_string('config_desc', 'local_qbankremotemanager')),
             "itemid" => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager')),
+            'questionbankid' => new external_value(
+                PARAM_INT,
+                get_string('question_bank_id_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
         ]);
     }
 
@@ -435,23 +441,40 @@ class qbankremotemanager_external extends external_api
      * You can use webservice/upload.php "Endpoint" to upload the file
      * File MUST be in a Moodle XML format
      *
-     * @param object $config      contains configuration for given quiz (quiz name, password, duration etc.)
-     * @param int    $itemid      item id for the file with questions in draft area
+     * @param object $config          contains configuration for given quiz (quiz name, password, duration etc.)
+     * @param int    $itemid          item id for the file with questions in draft area
+     * @param int    $questionbankid  id of the question bank (required from version 5, ignored on version 4)
      *
      * @return object where quiz ID is returned with the status.
      * The status can be either "OK" or "ERROR", when error is present you will recieve error message with it.
      * If everything went fine you will recieve number of imported questions.
      */
-    public static function upload_quiz($config, $itemid) {
-        global $DB;
+    public static function upload_quiz($config, $itemid, $questionbankid = null) {
+        global $DB, $CFG;
 
-        $params = self::validate_parameters(self::upload_quiz_parameters(), ['config' => $config, 'itemid' => $itemid]);
+        $params = self::validate_parameters(
+            self::upload_quiz_parameters(),
+            ['config' => $config, 'itemid' => $itemid, "questionbankid" => $questionbankid]
+        );
+
+        if ($CFG->version >= 2025041400 && $questionbankid == null) {
+            throw new moodle_exception('question_bank_id_expected', 'local_qbankremotemanager');
+        }
+
         $config = $params['config'];
 
         $course = $DB->get_record('course', ['id' => $config['courseid']], '*', MUST_EXIST);
 
         $thiscontext = context_course::instance($config['courseid']);
         self::validate_context($thiscontext);
+
+        if ($CFG->version >= 2025041400) {
+            $qbank = get_coursemodule_from_id('qbank', $questionbankid, $courseid);
+
+            if (!$qbank) {
+                throw new \moodle_exception('invalid_question_bank_id', 'local_qbankremotemanager');
+            }
+        }
 
         // Verify that user has capabilities to work with question bank and quiz modules.
         require_capability('moodle/question:add', $thiscontext);
@@ -466,7 +489,7 @@ class qbankremotemanager_external extends external_api
         // Validate config before importing questions to question bank.
         $validatedconfig = self::prepare_quiz_data($config, $course);
 
-        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($thiscontext);
+        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($thiscontext, $questionbankid);
 
         $addedquestionids = self::import_questions_to_qbank($itemid, $defaultcategory, $config["courseid"], $contexts);
 
@@ -514,10 +537,16 @@ class qbankremotemanager_external extends external_api
 
     /**
      * Only courseid is expected.
+     * questionbankid is expected on version 5
      */
     public static function get_question_bank_categories_parameters() {
         return new external_function_parameters([
             "courseid" => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
+            'questionbankid' => new external_value(
+                PARAM_INT,
+                get_string('question_bank_id_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
         ]);
     }
 
@@ -525,24 +554,40 @@ class qbankremotemanager_external extends external_api
      * Function used to categories from question bank with its context. This can be used to export selected category.
      *
      * @param int $courseid ID of the course we want the question categories of
+     * @param int $questionbankid ID of the question bank, needed from Moodle version 5
      *
      * @return object where you can retrieve the courseContextId and the array of categories,
      * where each category has an ID and the title
      */
-    public static function get_question_bank_categories($courseid) {
-        global $DB;
+    public static function get_question_bank_categories($courseid, $questionbankid = null) {
+        global $DB, $CFG;
+
+        if ($CFG->version >= 2025041400 && $questionbankid == null) {
+            throw new moodle_exception('question_bank_id_expected', 'local_qbankremotemanager');
+        }
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
 
-        $coursecontext = context_course::instance($courseid);
-        self::validate_context($coursecontext);
+        $context = context_course::instance($courseid);
 
-        require_capability('moodle/question:editall', $coursecontext);
-        require_capability('moodle/question:managecategory', $coursecontext);
+        if ($CFG->version >= 2025041400) {
+            $qbank = get_coursemodule_from_id('qbank', $questionbankid, $courseid);
 
-        $allcoursecontexts = new question_edit_contexts($coursecontext);
+            if (!$qbank) {
+                throw new \moodle_exception('invalid_question_bank_id', 'local_qbankremotemanager');
+            }
 
-        $catmenu = manage_categories_helper::question_category_options($allcoursecontexts->all(), false, 0, true, -1, false);
+            $context = \context_module::instance($questionbankid);
+        }
+
+        self::validate_context($context);
+
+        require_capability('moodle/question:editall', $context);
+        require_capability('moodle/question:managecategory', $context);
+
+        $allcontexts = new question_edit_contexts($context);
+
+        $catmenu = manage_categories_helper::question_category_options($allcontexts->all(), false, 0, true, -1, false);
 
         $values = [];
         foreach ($catmenu as $menu) {
@@ -558,7 +603,7 @@ class qbankremotemanager_external extends external_api
             }
         }
 
-        return ['courseContextId' => $coursecontext->id, "categories" => $values];
+        return ['contextId' => $context->id, "categories" => $values];
     }
 
     /**
@@ -567,7 +612,7 @@ class qbankremotemanager_external extends external_api
      */
     public static function get_question_bank_categories_returns() {
         return new external_single_structure([
-            'courseContextId' => new external_value(PARAM_INT, get_string('coursecontextid_desc', 'local_qbankremotemanager')),
+            'contextId' => new external_value(PARAM_INT, get_string('contextid_desc', 'local_qbankremotemanager')),
             'categories' => new external_multiple_structure(
                 new external_single_structure([
                     'id'    => new external_value(PARAM_INT, get_string('id_desc', 'local_qbankremotemanager')),
@@ -580,11 +625,17 @@ class qbankremotemanager_external extends external_api
 
     /**
      * Only courseid and file id are expected.
+     * questionbankid is expected on moodle version 5
      */
     public static function upload_questions_parameters() {
         return new external_function_parameters([
             "courseid" => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
             'itemid'   => new external_value(PARAM_INT, get_string('itemid_desc', 'local_qbankremotemanager')),
+            'questionbankid' => new external_value(
+                PARAM_INT,
+                get_string('question_bank_id_desc', 'local_qbankremotemanager'),
+                VALUE_OPTIONAL
+            ),
         ]);
     }
 
@@ -596,20 +647,36 @@ class qbankremotemanager_external extends external_api
      *
      * @param int $courseid ID of the course you want to import the questions to
      * @param int $itemid ID of the file retrieved after uploading the file to the draft area
+     * @param int $questionbankid ID of the question bank you want to import questions to, only expected on Moodle v5
      *
      * @return object with the status.
      * The status can be either "OK" or "ERROR", when error is present you will recieve error message with it.
      * If everything went fine you will recieve number of imported questions.
      */
-    public static function upload_questions($courseid, $itemid) {
-        global $DB;
+    public static function upload_questions($courseid, $itemid, $questionbankid = null) {
+        global $DB, $CFG;
 
-        $params = self::validate_parameters(self::upload_questions_parameters(), ['courseid' => $courseid, 'itemid' => $itemid]);
+        $params = self::validate_parameters(
+            self::upload_questions_parameters(),
+            ['courseid' => $courseid, 'itemid' => $itemid, 'questionbankid' => $questionbankid]
+        );
+
+        if ($CFG->version >= 2025041400 && $questionbankid == null) {
+            throw new moodle_exception('question_bank_id_expected', 'local_qbankremotemanager');
+        }
 
         $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
 
         $coursecontext = \context_course::instance($params['courseid']);
         self::validate_context($coursecontext);
+
+        if ($CFG->version >= 2025041400) {
+            $qbank = get_coursemodule_from_id('qbank', $questionbankid, $courseid);
+
+            if (!$qbank) {
+                throw new \moodle_exception('invalid_question_bank_id', 'local_qbankremotemanager');
+            }
+        }
 
         require_capability('moodle/question:add', $coursecontext);
         require_capability('moodle/question:editall', $coursecontext);
@@ -617,7 +684,7 @@ class qbankremotemanager_external extends external_api
         require_capability('moodle/question:moveall', $coursecontext);
         require_capability('moodle/question:useall', $coursecontext);
 
-        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($coursecontext);
+        [$defaultcategory, $contexts] = self::get_default_category_and_contexts($coursecontext, $questionbankid);
 
         $addedquestionids = self::import_questions_to_qbank($itemid, $defaultcategory, $params["courseid"], $contexts);
 
@@ -653,17 +720,95 @@ class qbankremotemanager_external extends external_api
     }
 
     /**
+     * Only courseid is expected
+     */
+    public static function get_question_banks_for_course_parameters() {
+        return new external_function_parameters([
+            "courseid" => new external_value(PARAM_INT, get_string('courseid_desc', 'local_qbankremotemanager')),
+        ]);
+    }
+
+    /**
+     * Function used to get available question banks in given course.
+     *
+     * @param int $courseid ID of the course you want to get question banks of
+     *
+     * @return object with one value "question_banks", which is an array
+     * where each question bank has its name and coresponding ID
+     */
+    public static function get_question_banks_for_course($courseid) {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_question_banks_for_course_parameters(), ['courseid' => $courseid]);
+
+        $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
+
+        $coursecontext = \context_course::instance($params['courseid']);
+        self::validate_context($coursecontext);
+
+        $allcaps = array_merge(
+            question_edit_contexts::$caps['editq'],
+            question_edit_contexts::$caps['categories']
+        );
+
+        $sharedbanks = question_bank_helper::get_activity_instances_with_shareable_questions([$course->id], [], $allcaps);
+
+        $availablequestionbanks = [];
+
+        foreach ($sharedbanks as $bank) {
+            $instance = new StdClass();
+            $instance->id = $bank->modid;
+            $instance->title = $bank->name;
+
+            array_push($availablequestionbanks, $instance);
+        }
+
+        return ["question_banks" => $availablequestionbanks];
+    }
+
+    /**
+     * returns object with one value "question_banks", which is an array
+     * where each question bank has its name and coresponding ID
+     */
+    public static function get_question_banks_for_course_returns() {
+        return new external_single_structure([
+            'question_banks' => new external_multiple_structure(
+                new external_single_structure([
+                    'id'    => new external_value(PARAM_INT, get_string('id_desc', 'local_qbankremotemanager')),
+                    'title' => new external_value(PARAM_TEXT, get_string('title_desc', 'local_qbankremotemanager')),
+                ]),
+                get_string('question_banks_desc', 'local_qbankremotemanager')
+            ),
+        ]);
+    }
+
+    /**
      * Helper function used to retrieve default category and contexts
      *
      * @param object $context course context
+     * @param int $questionbankid required from version 5, on version 4 it is ignored
      *
      * @return array [0] = default category
      *               [1] = question edit contexts
      */
-    private static function get_default_category_and_contexts($context) {
+    private static function get_default_category_and_contexts($context, $questionbankid = null) {
+        global $CFG;
+
+        if ($CFG->version >= 2025041400 && $questionbankid == null) {
+            throw new moodle_exception('question_bank_id_expected', 'local_qbankremotemanager');
+        }
+
+        if ($CFG->version >= 2025041400) {
+            $context = \context_module::instance($questionbankid);
+        }
+
         $contexts = new question_edit_contexts($context);
 
-        $defaultcategory = question_make_default_categories($contexts->all());
+        if ($CFG->version >= 2025041400) {
+            $defaultcategory = question_get_default_category($contexts->lowest()->id, true);
+        } else {
+            $defaultcategory = question_make_default_categories($contexts->all());
+        }
 
         return [$defaultcategory, $contexts];
     }
