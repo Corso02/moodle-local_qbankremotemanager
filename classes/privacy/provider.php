@@ -16,6 +16,8 @@
 
 namespace local_qbankremotemanager\privacy;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Class provider
  *
